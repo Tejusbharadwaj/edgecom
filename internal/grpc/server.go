@@ -11,8 +11,26 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/prometheus/client_golang/prometheus"
+	middleware "github.com/tejusbharadwaj/edgecom/internal/grpc/middlewares"
 	pb "github.com/tejusbharadwaj/edgecom/proto"
 )
+
+// ServerConfig holds configuration options for the gRPC server
+type ServerConfig struct {
+	CacheSize      int     // Size of the LRU cache
+	RateLimit      float64 // Requests per second
+	RateLimitBurst int     // Maximum burst size for rate limiting
+}
+
+// DefaultServerConfig returns a ServerConfig with sensible defaults
+func DefaultServerConfig() ServerConfig {
+	return ServerConfig{
+		CacheSize:      1000,
+		RateLimit:      5.0, // 5 requests per second
+		RateLimitBurst: 10,  // Burst of 10 requests
+	}
+}
 
 // DataRepository defines the interface for data access
 type DataRepository interface {
@@ -129,7 +147,7 @@ func (s *TimeSeriesService) QueryTimeSeries(
 	}, nil
 }
 
-// gRPC Server Configuration
+// gRPC Server Configuration without the middleware (for development and debug only)
 func ConfigureGRPCServer(
 	repo DataRepository,
 	opts ...grpc.ServerOption,
@@ -142,4 +160,50 @@ func ConfigureGRPCServer(
 	pb.RegisterTimeSeriesServiceServer(srv, timeSeriesService)
 
 	return srv
+}
+
+// SetupServer initializes and configures the gRPC server with all middleware
+func SetupServer(repo DataRepository, config ServerConfig) (*grpc.Server, error) {
+	// Initialize the cache
+	if err := middleware.InitializeCache(config.CacheSize); err != nil {
+		return nil, err
+	}
+
+	// Register Prometheus metrics
+	prometheus.MustRegister(middleware.Requests)
+	prometheus.MustRegister(middleware.Latency)
+
+	// Create server with chained interceptors
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			chainUnaryInterceptors(
+				middleware.ContextMiddleware,       // Add request ID first
+				middleware.RateLimitingInterceptor, // Rate limit early
+				middleware.LoggingInterceptor,      // Log all requests (with request ID)
+				middleware.MetricsInterceptor,      // Collect metrics
+				middleware.CachingInterceptor,      // Cache last to avoid caching errors
+			),
+		),
+	)
+
+	// Register the time series service
+	timeSeriesService := NewTimeSeriesService(repo)
+	pb.RegisterTimeSeriesServiceServer(server, timeSeriesService)
+
+	return server, nil
+}
+
+// chainUnaryInterceptors creates a single interceptor from multiple interceptors
+func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		chain := handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			interceptor := interceptors[i]
+			chainedInterceptor := chain
+			chain = func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
+				return interceptor(currentCtx, currentReq, info, chainedInterceptor)
+			}
+		}
+		return chain(ctx, req)
+	}
 }
