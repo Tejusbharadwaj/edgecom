@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package edgecom;
+
+option go_package = "github.com/tejusbharadwaj/edgecom/proto";
+
+service TimeSeriesService {
+    rpc QueryTimeSeries(TimeSeriesRequest) returns (TimeSeriesResponse) {}
+}
+
+message TimeSeriesRequest {
+    google.protobuf.Timestamp start = 1;
+    google.protobuf.Timestamp end = 2;
+    string window = 3;       // e.g., '1m', '5m', '1h', '1d'
+    string aggregation = 4;  // 'MIN', 'MAX', 'AVG', 'SUM'
+}
+
+message TimeSeriesDataPoint {
+    google.protobuf.Timestamp time = 1;
+    double value = 2;
+}
+
+message TimeSeriesResponse {
+    repeated TimeSeriesDataPoint data = 1;
+}
+
+
