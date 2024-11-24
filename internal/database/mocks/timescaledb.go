@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	database "github.com/tejusbharadwaj/edgecom/internal/database"
+	models "github.com/tejusbharadwaj/edgecom/internal/models"
 )
 
 // MockTimeSeriesRepository is a mock of TimeSeriesRepository interface.
@@ -37,7 +37,7 @@ func (m *MockTimeSeriesRepository) EXPECT() *MockTimeSeriesRepositoryMockRecorde
 }
 
 // BatchInsertTimeSeriesData mocks base method.
-func (m *MockTimeSeriesRepository) BatchInsertTimeSeriesData(arg0 context.Context, arg1 []database.TimeSeriesData) error {
+func (m *MockTimeSeriesRepository) BatchInsertTimeSeriesData(arg0 context.Context, arg1 []models.TimeSeriesData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchInsertTimeSeriesData", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -79,10 +79,10 @@ func (mr *MockTimeSeriesRepositoryMockRecorder) InsertTimeSeriesData(arg0, arg1 
 }
 
 // Query mocks base method.
-func (m *MockTimeSeriesRepository) Query(arg0 context.Context, arg1, arg2 time.Time, arg3, arg4 string) ([]database.TimeSeriesData, error) {
+func (m *MockTimeSeriesRepository) Query(arg0 context.Context, arg1, arg2 time.Time, arg3, arg4 string) ([]models.TimeSeriesData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].([]database.TimeSeriesData)
+	ret0, _ := ret[0].([]models.TimeSeriesData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -94,10 +94,10 @@ func (mr *MockTimeSeriesRepositoryMockRecorder) Query(arg0, arg1, arg2, arg3, ar
 }
 
 // QueryTimeSeriesData mocks base method.
-func (m *MockTimeSeriesRepository) QueryTimeSeriesData(arg0 context.Context, arg1, arg2 time.Time, arg3, arg4 string) ([]database.TimeSeriesData, error) {
+func (m *MockTimeSeriesRepository) QueryTimeSeriesData(arg0 context.Context, arg1, arg2 time.Time, arg3, arg4 string) ([]models.TimeSeriesData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryTimeSeriesData", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].([]database.TimeSeriesData)
+	ret0, _ := ret[0].([]models.TimeSeriesData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
