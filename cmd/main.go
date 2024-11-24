@@ -78,7 +78,7 @@ func main() {
 	}
 
 	// Start listening
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", appConfig.Server.Port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", appConfig.Server.Port))
 	if err != nil {
 		logger.Fatalf("Failed to listen: %v", err)
 	}
@@ -132,7 +132,7 @@ type Config struct {
 func parseFlags() *Config {
 	cfg := &Config{}
 
-	flag.IntVar(&cfg.Port, "port", 50051, "The gRPC server port")
+	flag.IntVar(&cfg.Port, "port", 8080, "The gRPC server port")
 	flag.IntVar(&cfg.CacheSize, "cache-size", 1000, "Size of the LRU cache")
 	flag.Float64Var(&cfg.RateLimit, "rate-limit", 5.0, "Rate limit in requests per second")
 	flag.IntVar(&cfg.RateLimitBurst, "rate-limit-burst", 10, "Maximum burst size for rate limiting")
