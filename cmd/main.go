@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/tejusbharadwaj/edgecom/internal/api"
 	"github.com/tejusbharadwaj/edgecom/internal/config"
 	"github.com/tejusbharadwaj/edgecom/internal/database"
 	server "github.com/tejusbharadwaj/edgecom/internal/grpc"
+	"github.com/tejusbharadwaj/edgecom/internal/scheduler"
 	"google.golang.org/grpc"
 )
 
@@ -42,14 +44,21 @@ func main() {
 		logger.Fatalf("Failed to create repository: %v", err)
 	}
 
-	// Create server configuration
+	// Create a context that will be canceled on shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Initialize components
+	seriesFetcher := api.NewSeriesFetcher(appConfig.Server.URL, repo)
+	scheduler := scheduler.NewScheduler(ctx, seriesFetcher, logger)
+
+	// Create and setup gRPC server
 	serverConfig := server.ServerConfig{
 		CacheSize:      cfg.CacheSize,
 		RateLimit:      cfg.RateLimit,
 		RateLimitBurst: cfg.RateLimitBurst,
 	}
 
-	// Initialize the gRPC server with middleware
 	srv, err := server.SetupServer(&repositoryAdapter{
 		repository: repo,
 	}, serverConfig)
@@ -57,26 +66,47 @@ func main() {
 		logger.Fatalf("Failed to setup server: %v", err)
 	}
 
-	// Start listening on configured port
+	// Start listening
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", appConfig.Server.Port))
 	if err != nil {
 		logger.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Create a context that will be canceled on shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Start background services
+	errChan := make(chan error, 1)
+
+	// Bootstrap historical data in a goroutine
+	go func() {
+		if err := seriesFetcher.BootstrapHistoricalData(ctx); err != nil {
+			errChan <- fmt.Errorf("bootstrap error: %w", err)
+		}
+	}()
+
+	// Start scheduler in a goroutine
+	go func() {
+		if err := scheduler.Start(); err != nil {
+			errChan <- fmt.Errorf("scheduler error: %w", err)
+		}
+	}()
 
 	// Handle shutdown gracefully
 	go handleShutdown(ctx, srv, logger, repo)
 
-	// Start serving
+	// Start gRPC server
 	logger.WithFields(logrus.Fields{
 		"port": appConfig.Server.Port,
 	}).Info("Starting gRPC server")
 
-	if err := srv.Serve(lis); err != nil {
-		logger.Fatalf("Failed to serve: %v", err)
+	// Monitor for errors from background services
+	go func() {
+		if err := srv.Serve(lis); err != nil {
+			errChan <- fmt.Errorf("server error: %w", err)
+		}
+	}()
+
+	// Wait for any error
+	if err := <-errChan; err != nil {
+		logger.Fatalf("Service error: %v", err)
 	}
 }
 
