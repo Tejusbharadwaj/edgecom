@@ -4,37 +4,32 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 // Config holds all configuration for our application
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Logging  LoggingConfig  `mapstructure:"logging"`
-}
+	Server struct {
+		Port int    `yaml:"port"`
+		Host string `yaml:"host"`
+		URL  string `yaml:"url"`
+	} `yaml:"server"`
 
-type ServerConfig struct {
-	Port int    `mapstructure:"port"`
-	Host string `mapstructure:"host"`
-	URL  string `mapstructure:"url"`
-}
+	Database struct {
+		Host              string `yaml:"host"`
+		Port              int    `yaml:"port"`
+		Name              string `yaml:"name"`
+		User              string `yaml:"user"`
+		Password          string `yaml:"password"`
+		SSLMode           string `yaml:"ssl_mode"`
+		MaxConnections    int    `yaml:"max_connections"`
+		ConnectionTimeout int    `yaml:"connection_timeout"`
+	} `yaml:"database"`
 
-type DatabaseConfig struct {
-	Host              string `mapstructure:"host"`
-	Port              int    `mapstructure:"port"`
-	Name              string `mapstructure:"name"`
-	User              string `mapstructure:"user"`
-	Password          string `mapstructure:"password"`
-	SSLMode           string `mapstructure:"ssl_mode"`
-	MaxConnections    int    `mapstructure:"max_connections"`
-	ConnectionTimeout int    `mapstructure:"connection_timeout"`
-}
-
-type LoggingConfig struct {
-	Level  string `mapstructure:"level"`
-	Format string `mapstructure:"format"`
+	Logging struct {
+		Level  string `yaml:"level"`
+		Format string `yaml:"format"`
+	} `yaml:"logging"`
 }
 
 // Load reads configuration from file and environment variables
@@ -65,17 +60,4 @@ func Load(path string) (*Config, error) {
 	}
 
 	return &config, nil
-}
-
-func setDefaults(v *viper.Viper) {
-	v.SetDefault("server.port", 8080)
-	v.SetDefault("server.host", "0.0.0.0")
-
-	v.SetDefault("database.port", 5432)
-	v.SetDefault("database.ssl_mode", "disable")
-	v.SetDefault("database.max_connections", 10)
-	v.SetDefault("database.connection_timeout", 5)
-
-	v.SetDefault("logging.level", "info")
-	v.SetDefault("logging.format", "json")
 }

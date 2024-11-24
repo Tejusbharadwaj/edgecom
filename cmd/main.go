@@ -30,6 +30,17 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	// Construct connection string from config
+	connStr := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		appConfig.Database.Host,
+		appConfig.Database.Port,
+		appConfig.Database.User,
+		appConfig.Database.Password,
+		appConfig.Database.Name,
+		appConfig.Database.SSLMode,
+	)
+
 	// Initialize structured logger
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
@@ -38,8 +49,8 @@ func main() {
 		"port": appConfig.Server.Port,
 	}).Info("Starting server")
 
-	// Create repository based on configuration
-	repo, err := createPostgresRepository(cfg.ConnectionString)
+	// Create repository using the connection string from config.yaml
+	repo, err := createPostgresRepository(connStr)
 	if err != nil {
 		logger.Fatalf("Failed to create repository: %v", err)
 	}
@@ -49,7 +60,7 @@ func main() {
 	defer cancel()
 
 	// Initialize components
-	seriesFetcher := api.NewSeriesFetcher(appConfig.Server.URL, repo)
+	seriesFetcher := api.NewSeriesFetcher(appConfig.Server.URL, repo, logger)
 	scheduler := scheduler.NewScheduler(ctx, seriesFetcher, logger)
 
 	// Create and setup gRPC server

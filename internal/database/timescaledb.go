@@ -9,6 +9,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/tejusbharadwaj/edgecom/internal/models"
 )
 
 // Using TimescaleDB plugin for Postgres is a better option for time series data base.
@@ -30,16 +31,10 @@ type TimeSeriesRepository interface {
 		start, end time.Time,
 		window string,
 		aggregation string,
-	) ([]TimeSeriesData, error)
-	QueryTimeSeriesData(ctx context.Context, start, end time.Time, window string, aggregation string) ([]TimeSeriesData, error)
+	) ([]models.TimeSeriesData, error)
+	QueryTimeSeriesData(ctx context.Context, start, end time.Time, window string, aggregation string) ([]models.TimeSeriesData, error)
 	Close() error
-	BatchInsertTimeSeriesData(ctx context.Context, data []TimeSeriesData) error
-}
-
-// TimeSeriesData represents a time series data point
-type TimeSeriesData struct {
-	Time  time.Time
-	Value float64
+	BatchInsertTimeSeriesData(ctx context.Context, data []models.TimeSeriesData) error
 }
 
 // NewPostgresRepo creates a new POstgresRepo
@@ -71,7 +66,7 @@ func (s *PostgresRepo) QueryTimeSeriesData(
 	start, end time.Time,
 	window string,
 	aggregation string,
-) ([]TimeSeriesData, error) {
+) ([]models.TimeSeriesData, error) {
 	// Validate window and aggregation
 	if aggregation != "MIN" && aggregation != "MAX" && aggregation != "AVG" && aggregation != "SUM" {
 		return nil, fmt.Errorf("invalid aggregation type: %s", aggregation)
@@ -98,9 +93,9 @@ func (s *PostgresRepo) QueryTimeSeriesData(
 	}
 	defer rows.Close()
 
-	var results []TimeSeriesData
+	var results []models.TimeSeriesData
 	for rows.Next() {
-		var r TimeSeriesData
+		var r models.TimeSeriesData
 		if err := rows.Scan(&r.Time, &r.Value); err != nil {
 			return nil, err
 		}
@@ -116,7 +111,7 @@ func (s *PostgresRepo) Close() error {
 
 // BatchInsertTimeSeriesData inserts a batch of time series data points thus improving performance
 // by reducing the number of round trips to the database and  without holding it all in memory.
-func (s *PostgresRepo) BatchInsertTimeSeriesData(ctx context.Context, data []TimeSeriesData) error {
+func (s *PostgresRepo) BatchInsertTimeSeriesData(ctx context.Context, data []models.TimeSeriesData) error {
 	// Begin transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -154,7 +149,7 @@ func (s *PostgresRepo) Query(
 	start, end time.Time,
 	window string,
 	aggregation string,
-) ([]TimeSeriesData, error) {
+) ([]models.TimeSeriesData, error) {
 	return s.QueryTimeSeriesData(ctx, start, end, window, aggregation)
 }
 
