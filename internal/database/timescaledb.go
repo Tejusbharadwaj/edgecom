@@ -114,6 +114,8 @@ func (s *PostgresRepo) Close() error {
 	return s.db.Close()
 }
 
+// BatchInsertTimeSeriesData inserts a batch of time series data points thus improving performance
+// by reducing the number of round trips to the database and  without holding it all in memory.
 func (s *PostgresRepo) BatchInsertTimeSeriesData(ctx context.Context, data []TimeSeriesData) error {
 	// Begin transaction
 	tx, err := s.db.BeginTx(ctx, nil)

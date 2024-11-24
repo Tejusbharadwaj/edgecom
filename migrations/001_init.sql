@@ -28,13 +28,3 @@ SELECT add_compression_policy('time_series_data',
 
 -- Add single index for time-based queries
 CREATE INDEX IF NOT EXISTS idx_time_series_data_time ON time_series_data (time DESC);
-
--- Bootstrap with 2 years of sample data
-INSERT INTO time_series_data (time, value)
-SELECT
-    generate_series(
-        NOW() - INTERVAL '2 years',
-        NOW(),
-        INTERVAL '1 hour'
-    ) AS time,
-    random() * 100 AS value; -- Replace with your actual data generation logic 

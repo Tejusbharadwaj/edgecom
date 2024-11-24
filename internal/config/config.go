@@ -18,6 +18,7 @@ type Config struct {
 type ServerConfig struct {
 	Port int    `mapstructure:"port"`
 	Host string `mapstructure:"host"`
+	URL  string `mapstructure:"url"`
 }
 
 type DatabaseConfig struct {
