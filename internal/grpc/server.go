@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -63,52 +62,6 @@ func NewTimeSeriesService(repo DataRepository) *TimeSeriesService {
 		repository: repo,
 		validator:  NewRequestValidator(),
 	}
-}
-
-// RequestValidator handles input validation
-type RequestValidator struct {
-	validWindows      map[string]bool
-	validAggregations map[string]bool
-}
-
-func NewRequestValidator() *RequestValidator {
-	return &RequestValidator{
-		validWindows: map[string]bool{
-			"1m": true,
-			"5m": true,
-			"1h": true,
-			"1d": true,
-		},
-		validAggregations: map[string]bool{
-			"MIN": true,
-			"MAX": true,
-			"AVG": true,
-			"SUM": true,
-		},
-	}
-}
-
-// Validate checks if the request parameters are valid
-func (v *RequestValidator) Validate(
-	start, end time.Time,
-	window, aggregation string,
-) error {
-	// Validate time range
-	if start.After(end) {
-		return errors.New("start time must be before end time")
-	}
-
-	// Validate window
-	if !v.validWindows[window] {
-		return fmt.Errorf("invalid window: %s", window)
-	}
-
-	// Validate aggregation
-	if !v.validAggregations[aggregation] {
-		return fmt.Errorf("invalid aggregation: %s", aggregation)
-	}
-
-	return nil
 }
 
 // QueryTimeSeries implements the gRPC service method

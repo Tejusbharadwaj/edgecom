@@ -337,3 +337,115 @@ func generateMockData(start, end time.Time) APIResponse {
 		Result: result,
 	}
 }
+
+func TestMiddlewareIntegration(t *testing.T) {
+	resetTestEnvironment()
+	client, repo, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+	startTime := now.AddDate(0, -1, 0)
+
+	// Setup test data
+	mockAPI := setupMockAPIServer(t)
+	defer mockAPI.Close()
+	fetcher := api.NewSeriesFetcher(mockAPI.URL, repo, logger)
+	err := fetcher.FetchData(ctx, startTime, now)
+	require.NoError(t, err)
+
+	req := &pb.TimeSeriesRequest{
+		Start:       timestamppb.New(startTime),
+		End:         timestamppb.New(now),
+		Window:      "1h",
+		Aggregation: "AVG",
+	}
+
+	// Test Cache Hit
+	resp1, err := client.QueryTimeSeries(ctx, req)
+	require.NoError(t, err)
+	resp2, err := client.QueryTimeSeries(ctx, req)
+	require.NoError(t, err)
+	assert.Equal(t, resp1, resp2, "Cache should return same response")
+
+	// Test Rate Limiting
+	for i := 0; i < 10; i++ {
+		_, err := client.QueryTimeSeries(ctx, req)
+		if err != nil {
+			assert.Contains(t, err.Error(), "rate limit exceeded")
+			break
+		}
+	}
+}
+
+func TestTimeSeriesEdgeCases(t *testing.T) {
+	resetTestEnvironment()
+	client, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	testCases := []struct {
+		name    string
+		req     *pb.TimeSeriesRequest
+		wantErr string
+	}{
+		{
+			name: "start time after end time",
+			req: &pb.TimeSeriesRequest{
+				Start:       timestamppb.New(now),
+				End:         timestamppb.New(now.Add(-time.Hour)),
+				Window:      "1h",
+				Aggregation: "AVG",
+			},
+			wantErr: "start time must be before end time",
+		},
+		{
+			name: "time range too large",
+			req: &pb.TimeSeriesRequest{
+				Start:       timestamppb.New(now.AddDate(-5, 0, 0)),
+				End:         timestamppb.New(now),
+				Window:      "1h",
+				Aggregation: "AVG",
+			},
+			wantErr: "time range exceeds maximum allowed",
+		},
+		{
+			name:    "empty request",
+			req:     &pb.TimeSeriesRequest{},
+			wantErr: "missing timestamp",
+		},
+		{
+			name: "missing timestamps",
+			req: &pb.TimeSeriesRequest{
+				Window:      "1h",
+				Aggregation: "AVG",
+			},
+			wantErr: "missing timestamp",
+		},
+		{
+			name: "invalid aggregation with valid window",
+			req: &pb.TimeSeriesRequest{
+				Start:       timestamppb.New(now.Add(-time.Hour)),
+				End:         timestamppb.New(now),
+				Window:      "1h",
+				Aggregation: "",
+			},
+			wantErr: "invalid aggregation",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.QueryTimeSeries(ctx, tc.req)
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr,
+					"Expected error containing %q, got %q", tc.wantErr, err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
