@@ -1,13 +1,14 @@
 server:
   port: 8080
   host: "0.0.0.0"
+  url: "https://api.edgecomenergy.net/core/asset/3662953a-1396-4996-a1b6-99a0c5e7a5de/series"
 
 database:
-  host: "${DB_HOST}"
-  port: "${DB_PORT}"
-  name: "${DB_NAME}"
-  user: "${DB_USER}"
-  password: "${DB_PASSWORD}"
+  host: "db"
+  port: 5432
+  name: "edgecom"
+  user: "edgecom"
+  password: "edgecom"
   ssl_mode: "disable"
   max_connections: 10
   connection_timeout: 5
