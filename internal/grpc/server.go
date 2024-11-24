@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	middleware "github.com/tejusbharadwaj/edgecom/internal/grpc/middlewares"
 	pb "github.com/tejusbharadwaj/edgecom/proto"
 )
@@ -123,7 +124,7 @@ func (s *TimeSeriesService) QueryTimeSeries(
 	if err := s.validator.Validate(
 		start, end, req.Window, req.Aggregation,
 	); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "%s", err.Error())
 	}
 
 	// Query data
@@ -165,24 +166,55 @@ func ConfigureGRPCServer(
 
 // SetupServer initializes and configures the gRPC server with all middleware
 func SetupServer(repo DataRepository, config ServerConfig) (*grpc.Server, error) {
-	// Initialize the cache
-	if err := middleware.InitializeCache(config.CacheSize); err != nil {
-		return nil, err
+	// Use the default registry
+	return SetupServerWithRegistry(repo, logrus.StandardLogger(), prometheus.DefaultRegisterer)
+}
+
+// SetupServerWithRegistry initializes the server with a custom registry
+func SetupServerWithRegistry(repo DataRepository, logger *logrus.Logger, reg prometheus.Registerer) (*grpc.Server, error) {
+	// Initialize middleware components
+	cache, err := middleware.NewCache(1000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache: %v", err)
 	}
 
-	// Register Prometheus metrics
-	prometheus.MustRegister(middleware.Requests)
-	prometheus.MustRegister(middleware.Latency)
+	rateLimiter := middleware.NewRateLimiter(5.0, 10)
+
+	// Initialize metrics
+	requests := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "grpc_requests_total",
+			Help: "Total number of gRPC requests handled",
+		},
+		[]string{"method"},
+	)
+
+	latency := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "grpc_request_duration_seconds",
+			Help:    "Request duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method"},
+	)
+
+	// Register metrics
+	if err := reg.Register(requests); err != nil {
+		return nil, fmt.Errorf("failed to register requests metric: %v", err)
+	}
+	if err := reg.Register(latency); err != nil {
+		return nil, fmt.Errorf("failed to register latency metric: %v", err)
+	}
 
 	// Create server with chained interceptors
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			chainUnaryInterceptors(
-				middleware.ContextMiddleware,       // Add request ID first
-				middleware.RateLimitingInterceptor, // Rate limit early
-				middleware.LoggingInterceptor,      // Log all requests (with request ID)
-				middleware.MetricsInterceptor,      // Collect metrics
-				middleware.CachingInterceptor,      // Cache last to avoid caching errors
+				middleware.ContextMiddleware,
+				rateLimiter.InterceptorFunc(),
+				middleware.LoggingInterceptor,
+				middleware.NewMetricsInterceptor(requests, latency),
+				cache.InterceptorFunc(),
 			),
 		),
 	)

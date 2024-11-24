@@ -9,16 +9,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var limiter = rate.NewLimiter(5, 10) // 5 requests per second, burst size of 10
+type RateLimiter struct {
+	limiter *rate.Limiter
+}
 
-func RateLimitingInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	if !limiter.Allow() {
-		return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
+func NewRateLimiter(rps float64, burst int) *RateLimiter {
+	return &RateLimiter{
+		limiter: rate.NewLimiter(rate.Limit(rps), burst),
 	}
-	return handler(ctx, req)
+}
+
+func (r *RateLimiter) InterceptorFunc() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if !r.limiter.Allow() {
+			return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
+		}
+		return handler(ctx, req)
+	}
 }

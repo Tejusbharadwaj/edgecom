@@ -39,6 +39,40 @@ services:
       timeout: 5s
       retries: 5
 
+  test:
+    container_name: edgecom-test
+    networks:
+      - edgecom-network
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: >
+      sh -c "
+        echo 'Running unit tests...' &&
+        go test ./... &&
+        echo 'Waiting for database...' &&
+        until nc -z db 5432; do
+          sleep 1
+        done &&
+        echo 'Database is ready!' &&
+        echo 'Running integration tests...' &&
+        go test -v -tags=integration ./integration-tests/...
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=edgecom
+      - DB_USER=edgecom
+      - DB_PASSWORD=edgecom
+    volumes:
+      - .:/app
+    profiles:
+      - test
+
 volumes:
   postgres_data: 
 
