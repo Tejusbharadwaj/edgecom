@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  app:
+    container_name: edgecom-app
+    networks:
+      - edgecom-network
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=edgecom
+      - DB_USER=edgecom
+      - DB_PASSWORD=edgecom
+    volumes:
+      - ./config.yaml:/app/config.yaml
+
+  db:
+    container_name: edgecom-db
+    networks:
+      - edgecom-network
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      - POSTGRES_DB=edgecom
+      - POSTGRES_USER=edgecom
+      - POSTGRES_PASSWORD=edgecom
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edgecom"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data: 
+
+networks:
+  edgecom-network:
+    driver: bridge 
