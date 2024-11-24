@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -189,6 +190,9 @@ func SetupServer(repo DataRepository, config ServerConfig) (*grpc.Server, error)
 	// Register the time series service
 	timeSeriesService := NewTimeSeriesService(repo)
 	pb.RegisterTimeSeriesServiceServer(server, timeSeriesService)
+
+	// Enable reflection for debugging
+	reflection.Register(server)
 
 	return server, nil
 }
