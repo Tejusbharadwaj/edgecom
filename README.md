@@ -1,8 +1,9 @@
 # EdgeCom Energy Time Series Service
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/tejusbharadwaj/edgecom.svg)](https://pkg.go.dev/github.com/tejusbharadwaj/edgecom)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tejusbharadwaj/edgecom.svg)](https://pkg.go.dev/github.com/tejusbharadwaj/edgecom@v0.1.1)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tejusbharadwaj/edgecom)](https://goreportcard.com/report/github.com/tejusbharadwaj/edgecom)
-[![Documentation Status](https://godoc.org/github.com/tejusbharadwaj/edgecom?status.svg)](http://godoc.org/github.com/tejusbharadwaj/edgecom)
+[![Release](https://img.shields.io/github/v/release/tejusbharadwaj/edgecom)](https://github.com/tejusbharadwaj/edgecom/releases)
+[![License](https://img.shields.io/github/license/tejusbharadwaj/edgecom)](LICENSE)
 
 A gRPC service for fetching, storing, and querying time series data from EdgeCom Energy's API.
 
@@ -19,9 +20,9 @@ A gRPC service for fetching, storing, and querying time series data from EdgeCom
 
 ## Prerequisites
 
-- Go 1.22 or later
-- Docker and Docker Compose
-- TimescaleDB
+- Go 1.22.0 or later
+- Docker and Docker Compose v2
+- TimescaleDB 2.x
 - Access to EdgeCom Energy API
 - grpcurl (for testing)
 
