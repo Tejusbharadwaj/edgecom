@@ -3,8 +3,57 @@ kind: ConfigMap
 metadata:
   name: edgecom-config
 data:
-  DB_NAME: edgecom
+  DB_NAME: "edgecom"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgecom-app-config
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      url: "https://api.edgecomenergy.net/core/asset/3662953a-1396-4996-a1b6-99a0c5e7a5de/series"
+    database:
+      host: "edgecom-db-service"
+      port: 5432
+      user: "edgecom"
+      password: "edgecom"
+      name: "edgecom"
+      ssl_mode: "disable"
+      max_connections: 10
+      connection_timeout: 30
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-scripts
+data:
+  001_init.sql: |
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+    CREATE TABLE IF NOT EXISTS time_series_data (
+        time TIMESTAMPTZ NOT NULL,
+        value DOUBLE PRECISION NOT NULL
+    );
+
+    SELECT create_hypertable('time_series_data', 'time', 
+        chunk_time_interval => INTERVAL '1 day', 
+        if_not_exists => TRUE
+    );
+
+    ALTER TABLE time_series_data SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = '',
+        timescaledb.compress_orderby = 'time'
+    );
+
+    SELECT add_compression_policy('time_series_data', 
+        INTERVAL '7 days',
+        if_not_exists => TRUE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_time_series_data_time ON time_series_data (time DESC);
 ---
 apiVersion: v1
 kind: Secret
@@ -13,4 +62,4 @@ metadata:
 type: Opaque
 data:
   DB_USER: ZWRnZWNvbQ==      # base64 encoded "edgecom"
-  DB_PASSWORD: ZWRnZWNvbQ==  # base64 encoded "edgecom" 
+  DB_PASSWORD: ZWRnZWNvbQ==   # base64 encoded "edgecom"

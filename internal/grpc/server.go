@@ -49,6 +49,7 @@ import (
 	"github.com/sirupsen/logrus"
 	middleware "github.com/tejusbharadwaj/edgecom/internal/grpc/middlewares"
 	pb "github.com/tejusbharadwaj/edgecom/proto"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 // ServerConfig holds configuration options for the gRPC server.
@@ -212,6 +213,14 @@ func SetupServerWithRegistry(repo DataRepository, logger *logrus.Logger, reg pro
 	// Register the time series service
 	timeSeriesService := NewTimeSeriesService(repo)
 	pb.RegisterTimeSeriesServiceServer(server, timeSeriesService)
+
+	// Register health service
+	healthChecker := NewHealthChecker()
+	grpc_health_v1.RegisterHealthServer(server, healthChecker)
+
+	// Set initial status
+	healthChecker.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	healthChecker.SetServingStatus("timeseries.TimeSeriesService", grpc_health_v1.HealthCheckResponse_SERVING)
 
 	// Enable reflection for debugging
 	reflection.Register(server)

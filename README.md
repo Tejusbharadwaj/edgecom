@@ -130,7 +130,11 @@ grpcurl -plaintext -d '{
 │   ├── database/      # Database interactions
 │   ├── grpc/          # gRPC service implementation
 │   └── scheduler/     # Background job scheduler
+├── k8s/               # Kubernetes manifests
 ├── proto/             # Protocol buffer definitions
+├── scripts/           # Deployment scripts
+│   ├── deploy.sh      # Kubernetes deployment script
+│   └── cleanup.sh     # Kubernetes cleanup script
 ├── migrations/        # Database migrations
 ├── integration-tests/ # Integration tests
 ├── config.yaml       # Configuration file
@@ -149,9 +153,26 @@ docker compose --profile test up --build
 
 ### Building Locally
 
+While you can build the application locally, it's recommended to use Docker Compose as it handles all configurations, dependencies, and environment setup automatically.
+
+#### Option 1: Using Docker Compose (Recommended)
 ```bash
+# This will handle all configurations, database setup, and dependencies
+docker compose up --build
+```
+
+#### Option 2: Manual Build (Advanced)
+```bash
+# Only use this if you have specific requirements that prevent using Docker Compose
+# You'll need to:
+# 1. Set up TimescaleDB manually
+# 2. Configure environment variables
+# 3. Handle dependencies
+
 go build -o edgecom ./cmd/main.go
 ```
+
+> **Note**: Docker Compose is the preferred method as it ensures consistent environments and handles all necessary configurations. Only use manual building if you have specific requirements that prevent using Docker Compose.
 
 ## Monitoring
 
@@ -170,4 +191,84 @@ The service implements graceful degradation:
 - Implements retry logic for API requests
 - Provides detailed error logging
 - Graceful shutdown handling
+
+## Deployment Options
+
+### Option 1: Docker Compose (Primary Method)
+
+Docker Compose is the preferred and officially supported deployment method for this service. It was designed and optimized for Docker Compose deployment, making it the most reliable and straightforward option.
+
+```bash
+# Start the service
+docker compose up --build
+
+# Stop the service
+docker compose down
+```
+
+For development and testing:
+```bash
+# Run all tests (unit tests and integration tests)
+docker compose --profile test up --build
+```
+
+### Option 2: Kubernetes (Alternative)
+
+> **Note**: While Kubernetes deployment is supported, Docker Compose is the primary and recommended method. Use Kubernetes only if it's specifically required for your infrastructure needs.
+
+#### Prerequisites for Kubernetes Deployment
+- Kubernetes cluster (local or cloud)
+- kubectl configured with your cluster
+- Helm (optional, for database deployment)
+
+#### Kubernetes Deployment Steps
+
+1. Create required Kubernetes resources:
+```bash
+# Using deployment script
+./scripts/deploy.sh
+
+# Or manually apply each manifest
+kubectl apply -f k8s/config.yaml
+kubectl apply -f k8s/database.yaml
+kubectl apply -f k8s/database-service.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+2. Verify the deployment:
+```bash
+kubectl get pods
+kubectl get services
+```
+
+3. To cleanup Kubernetes resources:
+```bash
+./scripts/cleanup.sh
+```
+
+## Deployment Environments
+
+### Local Development (Recommended)
+- Use Docker Compose for the simplest and most reliable setup
+- Automatic hot-reloading for development
+- Integrated test environment
+- Matches the primary deployment method
+- Minimal configuration required
+
+### Production
+#### Using Docker Compose (Recommended)
+- Simple, reliable deployment
+- Easy configuration management
+- Straightforward scaling
+- Built-in service discovery
+- Automatic container recovery
+
+#### Using Kubernetes (Alternative)
+- Available for specific infrastructure requirements
+- Scalable deployment with Kubernetes
+- Configurable resource limits
+- Rolling updates support
+- Health checks and auto-healing
+- Load balancing
 
