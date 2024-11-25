@@ -1,3 +1,5 @@
+//go:generate godoc -html . > ../../docs/internal/scheduler/index.html
+
 package scheduler
 
 import (
@@ -10,6 +12,8 @@ import (
 	"github.com/tejusbharadwaj/edgecom/internal/api"
 )
 
+// Package scheduler implements background data fetching and processing.
+// It manages periodic updates of time series data from external sources.
 type Scheduler struct {
 	ctx     context.Context
 	fetcher *api.SeriesFetcher
@@ -26,7 +30,8 @@ func NewScheduler(ctx context.Context, fetcher *api.SeriesFetcher, logger *logru
 	}
 }
 
-// Start the scheduler
+// Start begins the scheduling of periodic data fetches.
+// It continues running until the context is canceled or an unrecoverable error occurs.
 func (s *Scheduler) Start() error {
 	// Run data fetch every 5 minutes
 	_, err := s.cron.AddFunc("*/5 * * * *", s.collectData)

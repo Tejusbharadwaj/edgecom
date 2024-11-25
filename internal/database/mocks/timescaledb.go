@@ -92,18 +92,3 @@ func (mr *MockTimeSeriesRepositoryMockRecorder) Query(arg0, arg1, arg2, arg3, ar
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockTimeSeriesRepository)(nil).Query), arg0, arg1, arg2, arg3, arg4)
 }
-
-// QueryTimeSeriesData mocks base method.
-func (m *MockTimeSeriesRepository) QueryTimeSeriesData(arg0 context.Context, arg1, arg2 time.Time, arg3, arg4 string) ([]models.TimeSeriesData, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryTimeSeriesData", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].([]models.TimeSeriesData)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryTimeSeriesData indicates an expected call of QueryTimeSeriesData.
-func (mr *MockTimeSeriesRepositoryMockRecorder) QueryTimeSeriesData(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryTimeSeriesData", reflect.TypeOf((*MockTimeSeriesRepository)(nil).QueryTimeSeriesData), arg0, arg1, arg2, arg3, arg4)
-}

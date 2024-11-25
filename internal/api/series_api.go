@@ -1,3 +1,28 @@
+//go:generate godoc -html . > ../../docs/internal/api/index.html
+
+// Package api provides functionality for interacting with the EdgeCom Energy API.
+// It handles data fetching, historical data bootstrapping, and error handling.
+// The package implements:
+//   - Robust HTTP client with timeouts and context support
+//   - Automatic data conversion and storage
+//   - Historical data bootstrapping
+//   - Structured logging
+//   - Error handling with custom error types
+//
+// Example usage:
+//
+//	fetcher := NewSeriesFetcher(
+//	    "https://api.example.com/timeseries",
+//	    dbService,
+//	    logger,
+//	)
+//
+//	// Fetch last 24 hours of data
+//	err := fetcher.FetchData(
+//	    context.Background(),
+//	    time.Now().Add(-24*time.Hour),
+//	    time.Now(),
+//	)
 package api
 
 import (
@@ -14,17 +39,29 @@ import (
 	"github.com/tejusbharadwaj/edgecom/internal/models"
 )
 
+// Error types for API-related errors
 var (
+	// ErrAPIRequest is returned when there's an error making an API request
 	ErrAPIRequest = errors.New("error making API request")
-	ErrAPIStatus  = errors.New("error status from API")
+	// ErrAPIStatus is returned when the API returns a non-200 status code
+	ErrAPIStatus = errors.New("error status from API")
 )
 
+// SeriesFetcher is a struct that fetches data from the EdgeCom Energy API and stores it in a database.
 type SeriesFetcher struct {
 	apiURL    string
 	dbService database.TimeSeriesRepository
 	logger    *logrus.Logger
 }
 
+// NewSeriesFetcher creates a new SeriesFetcher instance.
+// Parameters:
+//   - apiURL: The base URL for the EdgeCom API
+//   - dbService: Repository for storing time series data
+//   - logger: Structured logger for operation tracking
+//
+// Returns:
+//   - A configured SeriesFetcher instance ready for use
 func NewSeriesFetcher(apiURL string, dbService database.TimeSeriesRepository, logger *logrus.Logger) *SeriesFetcher {
 	return &SeriesFetcher{
 		apiURL:    apiURL,
@@ -33,6 +70,12 @@ func NewSeriesFetcher(apiURL string, dbService database.TimeSeriesRepository, lo
 	}
 }
 
+// FetchData fetches data from the EdgeCom Energy API for a given time range and stores it in the database.
+// The method:
+//  1. Constructs the API request with proper formatting
+//  2. Executes the request with timeout
+//  3. Processes the response
+//  4. Stores the data in the database
 func (f *SeriesFetcher) FetchData(ctx context.Context, start, end time.Time) error {
 	url := fmt.Sprintf("%s?start=%s&end=%s",
 		f.apiURL,
@@ -97,6 +140,14 @@ func (f *SeriesFetcher) FetchData(ctx context.Context, start, end time.Time) err
 	return nil
 }
 
+// BootstrapHistoricalData initializes the database with historical data.
+// It attempts to fetch the last 2 years of data, with a fallback to
+// the last 24 hours if the full historical fetch fails.
+//
+// The method implements a graceful degradation strategy:
+//  1. Attempts to fetch 2 years of historical data
+//  2. On failure, falls back to last 24 hours
+//  3. Logs all operations and failures
 func (f *SeriesFetcher) BootstrapHistoricalData(ctx context.Context) error {
 	endTime := time.Now()
 	startTime := endTime.AddDate(-2, 0, 0)
