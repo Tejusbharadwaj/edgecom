@@ -1,5 +1,9 @@
 # EdgeCom Energy Time Series Service
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/tejusbharadwaj/edgecom.svg)](https://pkg.go.dev/github.com/tejusbharadwaj/edgecom)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tejusbharadwaj/edgecom)](https://goreportcard.com/report/github.com/tejusbharadwaj/edgecom)
+[![Documentation Status](https://godoc.org/github.com/tejusbharadwaj/edgecom?status.svg)](http://godoc.org/github.com/tejusbharadwaj/edgecom)
+
 A gRPC service for fetching, storing, and querying time series data from EdgeCom Energy's API.
 
 ## Features
