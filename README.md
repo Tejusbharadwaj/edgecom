@@ -1,6 +1,6 @@
 # EdgeCom Energy Time Series Service
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/tejusbharadwaj/edgecom.svg)](https://pkg.go.dev/github.com/tejusbharadwaj/edgecom@v0.1.6)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tejusbharadwaj/edgecom.svg)](https://pkg.go.dev/github.com/tejusbharadwaj/edgecom@v0.1.7)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tejusbharadwaj/edgecom)](https://goreportcard.com/report/github.com/tejusbharadwaj/edgecom)
 [![Release](https://img.shields.io/github/v/release/tejusbharadwaj/edgecom)](https://github.com/tejusbharadwaj/edgecom/releases)
 [![License](https://img.shields.io/github/license/tejusbharadwaj/edgecom)](LICENSE)
