@@ -1,3 +1,45 @@
+// Command edgecom provides a gRPC service for time series data management.
+//
+// The service supports:
+//   - Historical data bootstrapping (up to 2 years)
+//   - Time series data aggregation (MIN, MAX, AVG, SUM)
+//   - Configurable time windows (1m, 5m, 1h, 1d)
+//   - TimescaleDB integration
+//   - Prometheus metrics
+//   - Rate limiting and caching
+//
+// Usage:
+//
+//	edgecom [flags]
+//
+// The flags are:
+//
+//	-port int
+//	      The gRPC server port (default 8080)
+//	-cache-size int
+//	      Size of the LRU cache (default 1000)
+//	-rate-limit float
+//	      Rate limit in requests per second (default 5.0)
+//	-rate-limit-burst int
+//	      Maximum burst size for rate limiting (default 10)
+//	-conn-string string
+//	      Database connection string
+//
+// Configuration:
+//
+// The service uses config.yaml for additional configuration:
+//
+//	server:
+//	  port: 8080
+//	  url: "https://api.example.com/timeseries"
+//
+//	database:
+//	  host: "localhost"
+//	  port: 5432
+//	  name: "timeseries"
+//	  user: "postgres"
+//	  password: "secret"
+//	  sslmode: "disable"
 package main
 
 import (
@@ -20,16 +62,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Command edgecom is a gRPC service for time series data management.
-//
-// The service provides:
-//   - Historical data bootstrapping
-//   - Time series aggregations
-//   - TimescaleDB integration
-//   - Prometheus metrics
-//
-// For more information, see the package documentation at:
-// https://pkg.go.dev/github.com/tejusbharadwaj/edgecom
 func main() {
 	// Parse command line flags
 	cfg := parseFlags()
