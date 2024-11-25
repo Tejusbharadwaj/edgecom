@@ -1,0 +1,11 @@
+ database:
+  host: localhost
+  port: 5432
+  user: test_user
+  password: test_password
+  name: test_db
+  sslmode: disable
+
+server:
+  port: 8080
+  url: "https://api.edgecomenergy.net/core/asset/3662953a-1396-4996-a1b6-99a0c5e7a5de/series"
