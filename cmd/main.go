@@ -126,40 +126,60 @@ func main() {
 	}
 
 	// Start background services
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 3)
+	doneChan := make(chan bool, 1)
 
 	// Bootstrap historical data in a goroutine
 	go func() {
 		if err := seriesFetcher.BootstrapHistoricalData(ctx); err != nil {
 			errChan <- fmt.Errorf("bootstrap error: %w", err)
+			return
 		}
+		doneChan <- true
 	}()
 
 	// Start scheduler in a goroutine
 	go func() {
+		logger.Info("Starting scheduler...")
 		if err := scheduler.Start(); err != nil {
 			errChan <- fmt.Errorf("scheduler error: %w", err)
 		}
 	}()
 
-	// Handle shutdown gracefully
-	go handleShutdown(ctx, srv, logger, repo)
-
-	// Start gRPC server
-	logger.WithFields(logrus.Fields{
-		"port": appConfig.Server.Port,
-	}).Info("Starting gRPC server")
-
-	// Monitor for errors from background services
+	// Start gRPC server in a goroutine
 	go func() {
+		logger.WithFields(logrus.Fields{
+			"port": appConfig.Server.Port,
+		}).Info("Starting gRPC server")
+
 		if err := srv.Serve(lis); err != nil {
 			errChan <- fmt.Errorf("server error: %w", err)
+			cancel() // Cancel context to trigger shutdown
 		}
 	}()
 
-	// Wait for any error
-	if err := <-errChan; err != nil {
-		logger.Fatalf("Service error: %v", err)
+	// Handle shutdown gracefully
+	go handleShutdown(ctx, srv, scheduler, logger, repo)
+
+	// Wait for bootstrap to complete first
+	select {
+	case <-doneChan:
+		logger.Info("Bootstrap completed, continuing to run scheduler and server")
+	case err := <-errChan:
+		logger.Fatalf("Service error during bootstrap: %v", err)
+	}
+
+	// Keep the main goroutine alive and monitoring for all services
+	for {
+		select {
+		case err := <-errChan:
+			logger.WithError(err).Error("Service error occurred")
+			// Optionally, you could add logic here to determine if the error is fatal
+			// For now, we'll continue running unless it's a context cancellation
+		case <-ctx.Done():
+			logger.Info("Context cancelled, shutting down")
+			return
+		}
 	}
 }
 
@@ -186,7 +206,7 @@ func parseFlags() *Config {
 }
 
 // Handle graceful shutdown
-func handleShutdown(ctx context.Context, srv *grpc.Server, logger *logrus.Logger, repo database.TimeSeriesRepository) {
+func handleShutdown(ctx context.Context, srv *grpc.Server, scheduler *scheduler.Scheduler, logger *logrus.Logger, repo database.TimeSeriesRepository) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -202,7 +222,10 @@ func handleShutdown(ctx context.Context, srv *grpc.Server, logger *logrus.Logger
 	srv.GracefulStop()
 	logger.Println("Server stopped")
 
-	// Clean up the repository
+	logger.Println("Stopping scheduler...")
+	scheduler.Stop()
+	logger.Println("Scheduler stopped")
+
 	repo.Close()
 }
 

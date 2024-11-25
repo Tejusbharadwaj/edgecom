@@ -56,25 +56,37 @@ func NewScheduler(ctx context.Context, fetcher *api.SeriesFetcher, logger *logru
 // Start begins the scheduling of periodic data fetches.
 // It continues running until the context is canceled or an unrecoverable error occurs.
 func (s *Scheduler) Start() error {
-	// Run data fetch every 5 minutes
-	_, err := s.cron.AddFunc("*/5 * * * *", s.collectData)
+	s.logger.Info("Initializing scheduler with 5-minute intervals")
+
+	_, err := s.cron.AddFunc("@every 5m", s.collectData)
 	if err != nil {
 		return err
 	}
+
 	s.cron.Start()
+	s.logger.Info("Scheduler started successfully")
 	return nil
 }
 
 // collectData fetches data from the API and stores it in the database
 func (s *Scheduler) collectData() {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	s.logger.Info("Starting scheduled data collection")
+
+	ctx, cancel := context.WithTimeout(s.ctx, 2*time.Minute)
 	defer cancel()
 
 	endTime := time.Now()
 	startTime := endTime.Add(-5 * time.Minute)
 
+	s.logger.WithFields(logrus.Fields{
+		"startTime": startTime,
+		"endTime":   endTime,
+	}).Info("Fetching data")
+
 	if err := s.fetcher.FetchData(ctx, startTime, endTime); err != nil {
-		s.logger.Error("Failed to fetch data", err)
+		s.logger.WithError(err).Error("Failed to fetch data")
+	} else {
+		s.logger.Info("Successfully completed scheduled data collection")
 	}
 }
 
