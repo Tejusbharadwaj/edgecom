@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgecom-config
+data:
+  DB_NAME: edgecom
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: edgecom-secret
+type: Opaque
+data:
+  DB_USER: ZWRnZWNvbQ==      # base64 encoded "edgecom"
+  DB_PASSWORD: ZWRnZWNvbQ==  # base64 encoded "edgecom" 
