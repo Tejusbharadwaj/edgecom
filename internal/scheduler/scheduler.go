@@ -1,5 +1,23 @@
-//go:generate godoc -html . > ../../docs/internal/scheduler/index.html
-
+// Package scheduler implements background data fetching and processing for time series data.
+//
+// The scheduler provides:
+//   - Configurable periodic data fetching using cron expressions
+//   - Context-aware execution with timeout handling
+//   - Graceful shutdown support
+//   - Structured logging of fetch operations
+//   - Error handling and recovery
+//
+// Example Usage:
+//
+//	logger := logrus.New()
+//	fetcher := api.NewSeriesFetcher(client, db, logger)
+//
+//	scheduler := scheduler.NewScheduler(ctx, fetcher, logger)
+//	if err := scheduler.Start(); err != nil {
+//	    log.Fatalf("Failed to start scheduler: %v", err)
+//	}
+//
+//	defer scheduler.Stop()
 package scheduler
 
 import (
@@ -12,8 +30,10 @@ import (
 	"github.com/tejusbharadwaj/edgecom/internal/api"
 )
 
-// Package scheduler implements background data fetching and processing.
-// It manages periodic updates of time series data from external sources.
+// Scheduler manages periodic data fetching operations.
+// It uses cron scheduling to regularly update time series data
+// from external sources and store it in the database.
+
 type Scheduler struct {
 	ctx     context.Context
 	fetcher *api.SeriesFetcher
@@ -21,6 +41,9 @@ type Scheduler struct {
 	cron    *cron.Cron
 }
 
+// NewScheduler creates a new scheduler instance with the provided
+// context, data fetcher, and logger. The context can be used to
+// control the scheduler's lifecycle.
 func NewScheduler(ctx context.Context, fetcher *api.SeriesFetcher, logger *logrus.Logger) *Scheduler {
 	return &Scheduler{
 		ctx:     ctx,

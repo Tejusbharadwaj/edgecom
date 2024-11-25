@@ -1,7 +1,5 @@
-//go:generate godoc -html . > ../../docs/internal/api/index.html
-
 // Package api provides functionality for interacting with the EdgeCom Energy API.
-// It handles data fetching, historical data bootstrapping, and error handling.
+//
 // The package implements:
 //   - Robust HTTP client with timeouts and context support
 //   - Automatic data conversion and storage
@@ -9,20 +7,18 @@
 //   - Structured logging
 //   - Error handling with custom error types
 //
-// Example usage:
+// Example:
 //
-//	fetcher := NewSeriesFetcher(
+//	fetcher := api.NewSeriesFetcher(
 //	    "https://api.example.com/timeseries",
 //	    dbService,
 //	    logger,
 //	)
 //
-//	// Fetch last 24 hours of data
-//	err := fetcher.FetchData(
-//	    context.Background(),
-//	    time.Now().Add(-24*time.Hour),
-//	    time.Now(),
-//	)
+//	if err := fetcher.FetchData(ctx, start, end); err != nil {
+//	    log.Printf("Failed to fetch data: %v", err)
+//	    return err
+//	}
 package api
 
 import (

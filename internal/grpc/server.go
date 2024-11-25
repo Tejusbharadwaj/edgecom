@@ -1,6 +1,37 @@
+// Package server implements the gRPC service for time series data querying.
+//
+// The server provides:
+//   - Time series data querying with various aggregations
+//   - Request validation and error handling
+//   - Middleware support for:
+//   - Request rate limiting
+//   - Response caching
+//   - Metrics collection
+//   - Logging
+//   - Context management
+//   - Prometheus metrics integration
+//   - gRPC reflection for debugging
+//
+// Example Usage:
+//
+//	config := DefaultServerConfig()
+//	repo := database.NewTimeScaleDB(...)
+//
+//	server, err := SetupServer(repo, config)
+//	if err != nil {
+//	    log.Fatalf("Failed to setup server: %v", err)
+//	}
+//
+//	lis, err := net.Listen("tcp", ":50051")
+//	if err != nil {
+//	    log.Fatalf("Failed to listen: %v", err)
+//	}
+//
+//	if err := server.Serve(lis); err != nil {
+//	    log.Fatalf("Failed to serve: %v", err)
+//	}
+//
 //go:generate protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ../../proto/timeseries.proto
-//go:generate godoc -html . > ../../docs/internal/grpc/index.html
-
 package server
 
 import (
@@ -20,7 +51,8 @@ import (
 	pb "github.com/tejusbharadwaj/edgecom/proto"
 )
 
-// ServerConfig holds configuration options for the gRPC server
+// ServerConfig holds configuration options for the gRPC server.
+// It controls caching, rate limiting, and other server behaviors.
 type ServerConfig struct {
 	CacheSize      int     // Size of the LRU cache
 	RateLimit      float64 // Requests per second
@@ -52,7 +84,8 @@ type DataPoint struct {
 	Value float64
 }
 
-// TimeSeriesService encapsulates business logic
+// TimeSeriesService implements the gRPC service for querying time series data.
+// It handles request validation, data retrieval, and response formatting.
 type TimeSeriesService struct {
 	pb.UnimplementedTimeSeriesServiceServer
 	repository DataRepository

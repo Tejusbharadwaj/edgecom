@@ -20,25 +20,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Command edgecom provides a gRPC service for time series data management.
+// Command edgecom is a gRPC service for time series data management.
 //
-// The service supports:
-//   - Historical data bootstrapping (up to 2 years)
-//   - Time series data aggregation (MIN, MAX, AVG, SUM)
-//   - Configurable time windows (1m, 5m, 1h, 1d)
+// The service provides:
+//   - Historical data bootstrapping
+//   - Time series aggregations
 //   - TimescaleDB integration
 //   - Prometheus metrics
 //
-// Usage:
-//
-//	edgecom [flags]
-//
-// The flags are:
-//
-//	-config string
-//	      path to config file (default "config.yaml")
-//	-port int
-//	      gRPC server port (default 50051)
+// For more information, see the package documentation at:
+// https://pkg.go.dev/github.com/tejusbharadwaj/edgecom
 func main() {
 	// Parse command line flags
 	cfg := parseFlags()

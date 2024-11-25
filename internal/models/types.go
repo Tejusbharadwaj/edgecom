@@ -1,5 +1,3 @@
-//go:generate godoc -html . > ../../docs/internal/models/index.html
-
 // Package models defines the core data structures used throughout the EdgeCom service.
 // It provides types for both external API communication and internal data representation.
 package models

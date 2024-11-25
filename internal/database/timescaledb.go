@@ -1,5 +1,4 @@
 //go:generate go run github.com/golang/mock/mockgen -destination=./mocks/timescaledb.go -package=mocks . TimeSeriesRepository
-//go:generate godoc -html . > ../../docs/internal/database/index.html
 
 // Package database implements TimescaleDB-backed time series data storage.
 //
