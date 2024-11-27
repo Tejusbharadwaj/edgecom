@@ -119,27 +119,43 @@ grpcurl -plaintext -d '{
 ```
 
 ## Development
-
-### Project Structure
+## Project Structure
 
 ```
 .
-├── cmd/                # Application entry point
+├── cmd/                 # Application entry point
 ├── internal/
-│   ├── api/           # API client for EdgeCom Energy
-│   ├── database/      # Database interactions
-│   ├── grpc/          # gRPC service implementation
-│   └── scheduler/     # Background job scheduler
-├── k8s/               # Kubernetes manifests
-├── proto/             # Protocol buffer definitions
-├── scripts/           # Deployment scripts
-│   ├── deploy.sh      # Kubernetes deployment script
-│   └── cleanup.sh     # Kubernetes cleanup script
-├── migrations/        # Database migrations
-├── integration-tests/ # Integration tests
-├── config.yaml       # Configuration file
-└── docker-compose.yml
+│   ├── api/             # API client for EdgeCom Energy
+│   ├── database/        # Database interactions and repository interface
+│   ├── grpc/            # gRPC service implementation
+│   │   ├── server.go
+│   │   └── middlewares/ # gRPC middleware components
+│   └── scheduler/       # Background job scheduler
+├── proto/               # Protocol buffer definitions
+├── migrations/          # Database migrations
+├── integration-tests/   # Integration tests
+├── k8s/                 # Kubernetes manifests
+└── config.yaml          # Configuration file
 ```
+
+## Architecture
+
+The service follows a clean architecture pattern:
+- Repository pattern for data access
+- Clear separation of concerns between packages
+- Dependency injection for better testability
+- Middleware chain for cross-cutting concerns
+
+Key Components:
+1. TimeSeriesRepository interface in database package
+2. gRPC service implementation in grpc package
+3. Background scheduler for data collection
+4. Middleware stack for:
+   - Rate limiting
+   - Caching
+   - Metrics
+   - Logging
+
 
 ### Running Tests
 
