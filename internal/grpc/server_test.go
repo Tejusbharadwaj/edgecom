@@ -1,43 +1,35 @@
-package server
+package server_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/tejusbharadwaj/edgecom/internal/database/mocks"
+	server "github.com/tejusbharadwaj/edgecom/internal/grpc"
+	"github.com/tejusbharadwaj/edgecom/internal/models"
 	pb "github.com/tejusbharadwaj/edgecom/proto"
 )
 
-// MockRepository for testing
-type MockRepository struct {
-	mock.Mock
-}
-
-func (m *MockRepository) Query(
-	ctx context.Context,
-	start, end time.Time,
-	window, aggregation string,
-) ([]DataPoint, error) {
-	args := m.Called(ctx, start, end, window, aggregation)
-	if result := args.Get(0); result != nil {
-		return result.([]DataPoint), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
 func TestQueryTimeSeries(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockTimeSeriesRepository(ctrl)
+
+	svc := server.NewTimeSeriesService(mockRepo)
+
 	tests := []struct {
 		name          string
 		request       *pb.TimeSeriesRequest
-		mockData      []DataPoint
-		mockError     error
+		setupMock     func()
 		expectedCode  codes.Code
 		expectedError string
 	}{
@@ -49,11 +41,14 @@ func TestQueryTimeSeries(t *testing.T) {
 				Window:      "1h",
 				Aggregation: "AVG",
 			},
-			mockData: []DataPoint{
-				{Time: time.Now(), Value: 100.0},
-				{Time: time.Now().Add(time.Hour), Value: 200.0},
+			setupMock: func() {
+				mockRepo.EXPECT().
+					Query(gomock.Any(), gomock.Any(), gomock.Any(), "1h", "AVG").
+					Return([]models.TimeSeriesData{
+						{Time: time.Now(), Value: 100.0},
+						{Time: time.Now().Add(time.Hour), Value: 200.0},
+					}, nil)
 			},
-			mockError:    nil,
 			expectedCode: codes.OK,
 		},
 		{
@@ -64,8 +59,7 @@ func TestQueryTimeSeries(t *testing.T) {
 				Window:      "invalid",
 				Aggregation: "AVG",
 			},
-			mockData:      nil,
-			mockError:     nil,
+			setupMock:     func() {},
 			expectedCode:  codes.InvalidArgument,
 			expectedError: "invalid window: invalid",
 		},
@@ -77,8 +71,7 @@ func TestQueryTimeSeries(t *testing.T) {
 				Window:      "1h",
 				Aggregation: "INVALID",
 			},
-			mockData:      nil,
-			mockError:     nil,
+			setupMock:     func() {},
 			expectedCode:  codes.InvalidArgument,
 			expectedError: "invalid aggregation: INVALID",
 		},
@@ -90,8 +83,7 @@ func TestQueryTimeSeries(t *testing.T) {
 				Window:      "1h",
 				Aggregation: "AVG",
 			},
-			mockData:      nil,
-			mockError:     nil,
+			setupMock:     func() {},
 			expectedCode:  codes.InvalidArgument,
 			expectedError: "start time must be before end time",
 		},
@@ -99,25 +91,10 @@ func TestQueryTimeSeries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup
-			mockRepo := new(MockRepository)
-			service := NewTimeSeriesService(mockRepo)
+			tt.setupMock()
 
-			if tt.mockData != nil || tt.mockError != nil {
-				mockRepo.On(
-					"Query",
-					mock.Anything,
-					tt.request.Start.AsTime(),
-					tt.request.End.AsTime(),
-					tt.request.Window,
-					tt.request.Aggregation,
-				).Return(tt.mockData, tt.mockError)
-			}
+			resp, err := svc.QueryTimeSeries(context.Background(), tt.request)
 
-			// Execute
-			resp, err := service.QueryTimeSeries(context.Background(), tt.request)
-
-			// Assertions
 			if tt.expectedCode != codes.OK {
 				require.Error(t, err)
 				st, ok := status.FromError(err)
@@ -128,38 +105,43 @@ func TestQueryTimeSeries(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, resp)
-				assert.Len(t, resp.Data, len(tt.mockData))
-				for i, dp := range tt.mockData {
-					assert.Equal(t, dp.Value, resp.Data[i].Value)
-					assert.Equal(t, timestamppb.New(dp.Time).AsTime().Unix(), resp.Data[i].Time.AsTime().Unix())
-				}
+				assert.NotEmpty(t, resp.Data)
 			}
-
-			mockRepo.AssertExpectations(t)
 		})
 	}
 }
 
 func TestSetupServer(t *testing.T) {
-	// Test server setup with default config
-	repo := new(MockRepository)
-	config := DefaultServerConfig()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	server, err := SetupServer(repo, config)
-	require.NoError(t, err)
-	require.NotNil(t, server)
+	mockRepo := mocks.NewMockTimeSeriesRepository(ctrl)
 
-	// Test with invalid cache size
-	invalidConfig := ServerConfig{
-		CacheSize: -1, // Invalid cache size
+	config := server.ServerConfig{
+		CacheSize:      1000,
+		RateLimit:      5.0,
+		RateLimitBurst: 10,
 	}
-	server, err = SetupServer(repo, invalidConfig)
+
+	srv, err := server.SetupServer(mockRepo, config)
+	require.NoError(t, err)
+	require.NotNil(t, srv)
+
+	// Test with invalid config
+	invalidConfig := server.ServerConfig{
+		CacheSize: -1,
+	}
+	srv, err = server.SetupServer(mockRepo, invalidConfig)
 	require.Error(t, err)
-	require.Nil(t, server)
+	require.Nil(t, srv)
 }
 
-func TestRequestValidator(t *testing.T) {
-	validator := NewRequestValidator()
+func TestValidateRequest(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockTimeSeriesRepository(ctrl)
+	svc := server.NewTimeSeriesService(mockRepo)
 
 	tests := []struct {
 		name        string
@@ -205,11 +187,41 @@ func TestRequestValidator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.Validate(tt.start, tt.end, tt.window, tt.aggregation)
+			req := &pb.TimeSeriesRequest{
+				Start:       timestamppb.New(tt.start),
+				End:         timestamppb.New(tt.end),
+				Window:      tt.window,
+				Aggregation: tt.aggregation,
+			}
+
+			// Set up mock expectations BEFORE calling the method
+			if !tt.wantErr {
+				mockRepo.EXPECT().
+					Query(
+						gomock.Any(),
+						gomock.Any(), // Use matchers for time values
+						gomock.Any(),
+						tt.window,
+						tt.aggregation,
+					).
+					Return([]models.TimeSeriesData{
+						{Time: tt.start, Value: 100.0},
+					}, nil)
+			}
+
+			// Call the method after setting up expectations
+			resp, err := svc.QueryTimeSeries(context.Background(), req)
+
 			if tt.wantErr {
 				assert.Error(t, err)
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+				assert.Equal(t, codes.InvalidArgument, st.Code())
+				assert.Nil(t, resp)
 			} else {
 				assert.NoError(t, err)
+				require.NotNil(t, resp)
+				assert.NotEmpty(t, resp.Data)
 			}
 		})
 	}

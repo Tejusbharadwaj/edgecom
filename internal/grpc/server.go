@@ -31,7 +31,7 @@
 //	    log.Fatalf("Failed to serve: %v", err)
 //	}
 //
-//go:generate protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ../../proto/timeseries.proto
+//go:generate mockgen -source=../../proto/timeseries_grpc.pb.go -destination=mocks/mock_timeseries.go -package=mocks TimeSeriesServiceServer
 package server
 
 import (

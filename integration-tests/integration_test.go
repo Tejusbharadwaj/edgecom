@@ -89,7 +89,7 @@ func setupGRPCServer(t *testing.T, repo database.TimeSeriesRepository) (*grpc.Se
 	lis = bufconn.Listen(bufSize)
 
 	srv, err := server.SetupServerWithRegistry(
-		&testRepositoryAdapter{repo},
+		repo,
 		logger,
 		registry,
 	)
@@ -270,31 +270,6 @@ func TestTimeSeriesErrorCases(t *testing.T) {
 			}
 		})
 	}
-}
-
-type testRepositoryAdapter struct {
-	repo database.TimeSeriesRepository
-}
-
-func (ra *testRepositoryAdapter) Query(
-	ctx context.Context,
-	start, end time.Time,
-	window string,
-	aggregation string,
-) ([]server.DataPoint, error) {
-	data, err := ra.repo.Query(ctx, start, end, window, aggregation)
-	if err != nil {
-		return nil, err
-	}
-
-	dataPoints := make([]server.DataPoint, len(data))
-	for i, d := range data {
-		dataPoints[i] = server.DataPoint{
-			Time:  d.Time,
-			Value: d.Value,
-		}
-	}
-	return dataPoints, nil
 }
 
 func setupMockAPIServer(t *testing.T) *httptest.Server {
