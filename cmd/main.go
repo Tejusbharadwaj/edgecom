@@ -51,7 +51,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/tejusbharadwaj/edgecom/internal/api"
@@ -112,9 +111,7 @@ func main() {
 		RateLimitBurst: cfg.RateLimitBurst,
 	}
 
-	srv, err := server.SetupServer(&repositoryAdapter{
-		repository: repo,
-	}, serverConfig)
+	srv, err := server.SetupServer(repo, serverConfig)
 	if err != nil {
 		logger.Fatalf("Failed to setup server: %v", err)
 	}
@@ -227,33 +224,6 @@ func handleShutdown(ctx context.Context, srv *grpc.Server, scheduler *scheduler.
 	logger.Println("Scheduler stopped")
 
 	repo.Close()
-}
-
-// Add this adapter struct and method
-type repositoryAdapter struct {
-	repository database.TimeSeriesRepository
-}
-
-func (ra *repositoryAdapter) Query(
-	ctx context.Context,
-	start, end time.Time,
-	window string,
-	aggregation string,
-) ([]server.DataPoint, error) {
-	data, err := ra.repository.Query(ctx, start, end, window, aggregation)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert database.TimeSeriesData to server.DataPoint
-	dataPoints := make([]server.DataPoint, len(data))
-	for i, d := range data {
-		dataPoints[i] = server.DataPoint{
-			Time:  d.Time,
-			Value: d.Value,
-		}
-	}
-	return dataPoints, nil
 }
 
 // Create a Postgres repository

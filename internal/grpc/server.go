@@ -37,7 +37,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -47,6 +46,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"github.com/tejusbharadwaj/edgecom/internal/database"
 	middleware "github.com/tejusbharadwaj/edgecom/internal/grpc/middlewares"
 	pb "github.com/tejusbharadwaj/edgecom/proto"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -69,32 +69,16 @@ func DefaultServerConfig() ServerConfig {
 	}
 }
 
-// DataRepository defines the interface for data access
-type DataRepository interface {
-	Query(
-		ctx context.Context,
-		start, end time.Time,
-		window string,
-		aggregation string,
-	) ([]DataPoint, error)
-}
-
-// DataPoint represents a generic time series data point
-type DataPoint struct {
-	Time  time.Time
-	Value float64
-}
-
 // TimeSeriesService implements the gRPC service for querying time series data.
 // It handles request validation, data retrieval, and response formatting.
 type TimeSeriesService struct {
 	pb.UnimplementedTimeSeriesServiceServer
-	repository DataRepository
+	repository database.TimeSeriesRepository
 	validator  *RequestValidator
 }
 
 // NewTimeSeriesService creates a new service instance
-func NewTimeSeriesService(repo DataRepository) *TimeSeriesService {
+func NewTimeSeriesService(repo database.TimeSeriesRepository) *TimeSeriesService {
 	return &TimeSeriesService{
 		repository: repo,
 		validator:  NewRequestValidator(),
@@ -142,7 +126,7 @@ func (s *TimeSeriesService) QueryTimeSeries(
 
 // gRPC Server Configuration without the middleware (for development and debug only)
 func ConfigureGRPCServer(
-	repo DataRepository,
+	repo database.TimeSeriesRepository,
 	opts ...grpc.ServerOption,
 ) *grpc.Server {
 	// Create gRPC server with optional configurations
@@ -156,13 +140,13 @@ func ConfigureGRPCServer(
 }
 
 // SetupServer initializes and configures the gRPC server with all middleware
-func SetupServer(repo DataRepository, config ServerConfig) (*grpc.Server, error) {
+func SetupServer(repo database.TimeSeriesRepository, config ServerConfig) (*grpc.Server, error) {
 	// Use the default registry
 	return SetupServerWithRegistry(repo, logrus.StandardLogger(), prometheus.DefaultRegisterer)
 }
 
 // SetupServerWithRegistry initializes the server with a custom registry
-func SetupServerWithRegistry(repo DataRepository, logger *logrus.Logger, reg prometheus.Registerer) (*grpc.Server, error) {
+func SetupServerWithRegistry(repo database.TimeSeriesRepository, logger *logrus.Logger, reg prometheus.Registerer) (*grpc.Server, error) {
 	// Initialize middleware components
 	cache, err := middleware.NewCache(1000)
 	if err != nil {
